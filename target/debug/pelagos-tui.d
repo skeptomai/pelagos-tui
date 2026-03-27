@@ -1,1 +1,0 @@
-/Users/christopherbrown/Projects/pelagos-tui/target/debug/pelagos-tui: /Users/christopherbrown/Projects/pelagos-tui/src/app.rs /Users/christopherbrown/Projects/pelagos-tui/src/config.rs /Users/christopherbrown/Projects/pelagos-tui/src/main.rs /Users/christopherbrown/Projects/pelagos-tui/src/runner.rs /Users/christopherbrown/Projects/pelagos-tui/src/ui.rs
