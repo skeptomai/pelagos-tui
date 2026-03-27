@@ -221,7 +221,7 @@ impl LinuxRunner {
 impl Runner for LinuxRunner {
     fn ps(&self, all: bool) -> anyhow::Result<Vec<Container>> {
         let mut cmd = Command::new("pelagos");
-        cmd.arg("--profile").arg(&self.profile);
+        // Linux pelagos has no --profile flag; profile isolation is macOS-only.
         cmd.arg("ps").arg("--json");
         if all {
             cmd.arg("--all");

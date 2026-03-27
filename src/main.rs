@@ -160,13 +160,17 @@ fn run_subscription(
 ) -> anyhow::Result<()> {
     use std::io::BufRead;
 
-    let mut child = std::process::Command::new("pelagos")
-        .arg("--profile")
-        .arg(profile)
-        .arg("subscribe")
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .spawn()?;
+    let mut child = {
+        let mut cmd = std::process::Command::new("pelagos");
+        // On macOS, pelagos-mac multiplexes VM profiles via --profile.
+        // On Linux, pelagos runs natively with no profile concept — omit the flag.
+        #[cfg(target_os = "macos")]
+        cmd.arg("--profile").arg(profile);
+        cmd.arg("subscribe")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()?
+    };
 
     let stdout = child.stdout.take().expect("piped stdout");
 
