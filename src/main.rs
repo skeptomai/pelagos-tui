@@ -389,6 +389,21 @@ fn run_loop(
 }
 
 // ---------------------------------------------------------------------------
+// pelagos command builder
+// ---------------------------------------------------------------------------
+
+/// Build a `pelagos` Command pre-loaded with `--profile <p>` on macOS.
+/// On Linux, pelagos has no `--profile` flag — profile isolation is macOS-only.
+fn pelagos_cmd(profile: &str) -> std::process::Command {
+    let mut cmd = std::process::Command::new("pelagos");
+    #[cfg(target_os = "macos")]
+    cmd.arg("--profile").arg(profile);
+    #[cfg(not(target_os = "macos"))]
+    let _ = profile;
+    cmd
+}
+
+// ---------------------------------------------------------------------------
 // Image background functions (never block event loop)
 // ---------------------------------------------------------------------------
 
@@ -402,9 +417,7 @@ fn execute_image_ls_bg(
         None => return,
     };
 
-    let out = std::process::Command::new("pelagos")
-        .arg("--profile")
-        .arg(profile)
+    let out = pelagos_cmd(profile)
         .arg("image")
         .arg("ls")
         .arg("--json")
@@ -435,9 +448,7 @@ fn execute_image_pull_bg(
 ) {
     log::info!("image pull: profile={} reference={}", profile, reference);
 
-    let result = std::process::Command::new("pelagos")
-        .arg("--profile")
-        .arg(profile)
+    let result = pelagos_cmd(profile)
         .arg("image")
         .arg("pull")
         .arg(reference)
@@ -474,9 +485,7 @@ fn execute_image_rm_bg(
 ) {
     log::info!("image rm: profile={} reference={}", profile, reference);
 
-    let result = std::process::Command::new("pelagos")
-        .arg("--profile")
-        .arg(profile)
+    let result = pelagos_cmd(profile)
         .arg("image")
         .arg("rm")
         .arg(reference)
@@ -514,9 +523,7 @@ fn execute_image_inspect_bg(
         None => return,
     };
 
-    let out = std::process::Command::new("pelagos")
-        .arg("--profile")
-        .arg(profile)
+    let out = pelagos_cmd(profile)
         .arg("image")
         .arg("inspect")
         .arg(reference)
@@ -552,9 +559,7 @@ fn execute_inspect_bg(profile: &str, name: &str, tx: Option<mpsc::SyncSender<run
         None => return,
     };
 
-    let out = std::process::Command::new("pelagos")
-        .arg("--profile")
-        .arg(profile)
+    let out = pelagos_cmd(profile)
         .arg("ps")
         .arg("--json")
         .arg("--all")
@@ -616,9 +621,7 @@ fn execute_run_bg(profile: &str, input: &str, status_tx: Option<mpsc::SyncSender
     }
 
     log::debug!("run detached: args={:?}", args);
-    let result = std::process::Command::new("pelagos")
-        .arg("--profile")
-        .arg(profile)
+    let result = pelagos_cmd(profile)
         .arg("run")
         .args(&args)
         .stdin(std::process::Stdio::null())
@@ -659,9 +662,7 @@ fn execute_action_bg(
         // StopAndRemove: stop the container first, then remove it.
         if *action == ConfirmAction::StopAndRemove {
             log::info!("action: profile={} stop {}", profile, name);
-            let _ = std::process::Command::new("pelagos")
-                .arg("--profile")
-                .arg(profile)
+            let _ = pelagos_cmd(profile)
                 .arg("stop")
                 .arg(name)
                 .stdin(std::process::Stdio::null())
@@ -670,9 +671,7 @@ fn execute_action_bg(
 
         let subcmd = action.pelagos_cmd();
         log::info!("action: profile={} {} {}", profile, subcmd, name);
-        let result = std::process::Command::new("pelagos")
-            .arg("--profile")
-            .arg(profile)
+        let result = pelagos_cmd(profile)
             .arg(subcmd)
             .arg(name)
             .stdin(std::process::Stdio::null())
@@ -858,12 +857,17 @@ fn resolve_pelagos_path() -> String {
 
 fn open_in_terminal(profile: &str, input: &str) -> anyhow::Result<()> {
     let pelagos = resolve_pelagos_path();
+    #[cfg(target_os = "macos")]
     let cmd = format!(
         "{} --profile {} run {}",
         pelagos,
         shell_escape(profile),
         input
     );
+    #[cfg(not(target_os = "macos"))]
+    let cmd = format!("{} run {}", pelagos, input);
+    #[cfg(not(target_os = "macos"))]
+    let _ = profile;
     log::debug!("open_in_terminal: cmd={:?}", cmd);
 
     if let Ok(term_bin) = std::env::var("PELAGOS_TERMINAL") {
