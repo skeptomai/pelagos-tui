@@ -2,10 +2,8 @@
 
 Terminal UI for the [pelagos](https://github.com/skeptomai/pelagos) container runtime.
 
-**Status: Pre-implementation.** The architecture is defined; extraction from
-[pelagos-mac](https://github.com/skeptomai/pelagos-mac) is in progress.
-See [docs/EPIC-pelagos-tui.md](https://github.com/skeptomai/pelagos-mac/blob/main/docs/EPIC-pelagos-tui.md)
-in the pelagos-mac repo for the full design.
+**Status: Working.** Builds and runs on macOS (Apple Silicon) and Linux.
+See [QUICKSTART.md](QUICKSTART.md) for build and manual testing steps.
 
 ---
 
@@ -23,8 +21,8 @@ concern nor Mac-specific.
 
 | Platform | Transport | Status |
 |---|---|---|
-| macOS (Apple Silicon) | vsock → pelagos-guest → VM | Extraction in progress |
-| Linux (aarch64, x86_64) | subprocess → pelagos binary | Planned |
+| macOS (Apple Silicon) | vsock → pelagos-guest → VM | Working |
+| Linux (aarch64, x86_64) | `pelagos subscribe` subprocess | Working |
 
 ---
 
