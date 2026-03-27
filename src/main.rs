@@ -30,10 +30,10 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 
 use app::{App, ConfirmAction, ImageInfo, SubscriptionMsg};
-#[cfg(target_os = "macos")]
-use runner::MacOsRunner as PlatformRunner;
 #[cfg(not(target_os = "macos"))]
 use runner::LinuxRunner as PlatformRunner;
+#[cfg(target_os = "macos")]
+use runner::MacOsRunner as PlatformRunner;
 #[allow(unused_imports)]
 use runner::Runner;
 
