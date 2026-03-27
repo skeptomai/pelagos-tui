@@ -5,20 +5,17 @@
 - [pelagos](https://github.com/skeptomai/pelagos) built and on `$PATH`
 - Rust toolchain (stable)
 
-## Build
+## Build and Install
 
 ```bash
 git clone https://github.com/skeptomai/pelagos-tui
 cd pelagos-tui
-cargo build --release
-# Binary is at target/release/pelagos-tui
+./scripts/install.sh          # installs to /usr/local/bin
+# or: ./scripts/install.sh ~/bin  for a custom directory
 ```
 
-Add it to your PATH, or run it directly:
-
-```bash
-export PATH="$PATH:$(pwd)/target/release"
-```
+The script builds a release binary and installs it. It uses sudo only for
+the copy step if you are not root.
 
 ---
 
