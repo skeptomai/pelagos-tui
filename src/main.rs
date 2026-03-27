@@ -395,12 +395,17 @@ fn run_loop(
 /// Build a `pelagos` Command pre-loaded with `--profile <p>` on macOS.
 /// On Linux, pelagos has no `--profile` flag — profile isolation is macOS-only.
 fn pelagos_cmd(profile: &str) -> std::process::Command {
-    let mut cmd = std::process::Command::new("pelagos");
     #[cfg(target_os = "macos")]
-    cmd.arg("--profile").arg(profile);
+    {
+        let mut cmd = std::process::Command::new("pelagos");
+        cmd.arg("--profile").arg(profile);
+        cmd
+    }
     #[cfg(not(target_os = "macos"))]
-    let _ = profile;
-    cmd
+    {
+        let _ = profile;
+        std::process::Command::new("pelagos")
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -928,6 +933,7 @@ fn escape_applescript(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
+#[cfg(target_os = "macos")]
 fn shell_escape(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
