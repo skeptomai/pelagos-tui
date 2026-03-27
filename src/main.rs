@@ -166,6 +166,9 @@ fn run_subscription(
         // On Linux, pelagos runs natively with no profile concept — omit the flag.
         #[cfg(target_os = "macos")]
         cmd.arg("--profile").arg(profile);
+        // On Linux, `profile` is unused — suppress the warning without a dummy binding.
+        #[cfg(not(target_os = "macos"))]
+        let _ = profile;
         cmd.arg("subscribe")
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::null())

@@ -93,11 +93,13 @@ pub trait Runner {
 // MacOsRunner
 // ---------------------------------------------------------------------------
 
+#[cfg(target_os = "macos")]
 pub struct MacOsRunner {
     #[allow(dead_code)]
     pub profile: String,
 }
 
+#[cfg(target_os = "macos")]
 impl MacOsRunner {
     pub fn new(profile: impl Into<String>) -> Self {
         Self {
@@ -106,6 +108,7 @@ impl MacOsRunner {
     }
 }
 
+#[cfg(target_os = "macos")]
 impl Runner for MacOsRunner {
     fn ps(&self, all: bool) -> anyhow::Result<Vec<Container>> {
         let mut cmd = Command::new("pelagos");
@@ -205,6 +208,9 @@ impl Runner for MacOsRunner {
 /// always "available" from the TUI's perspective.
 #[cfg(not(target_os = "macos"))]
 pub struct LinuxRunner {
+    // Kept for API symmetry with MacOsRunner; never passed to the binary
+    // since Linux pelagos has no --profile flag.
+    #[allow(dead_code)]
     pub profile: String,
 }
 
