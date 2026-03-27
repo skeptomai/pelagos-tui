@@ -33,4 +33,4 @@ else
     sudo bash -c "$(declare -f do_install); do_install '${INSTALL_DIR}'"
 fi
 
-echo "Done. $(pelagos-tui --version 2>/dev/null || echo 'pelagos-tui installed')"
+echo "Done. pelagos-tui installed at ${INSTALL_DIR}/pelagos-tui"
