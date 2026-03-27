@@ -2,13 +2,13 @@
 
 ## Prerequisites
 
-- [pelagos](https://github.com/skeptomai/pelagos) built and on `$PATH`
+- [pelagos](https://github.com/pelagos-containers/pelagos) built and on `$PATH`
 - Rust toolchain (stable)
 
 ## Build and Install
 
 ```bash
-git clone https://github.com/skeptomai/pelagos-tui
+git clone https://github.com/pelagos-containers/pelagos-tui
 cd pelagos-tui
 ./scripts/install.sh          # installs to /usr/local/bin
 # or: ./scripts/install.sh ~/bin  for a custom directory

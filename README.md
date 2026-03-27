@@ -1,6 +1,6 @@
 # pelagos-tui
 
-Terminal UI for the [pelagos](https://github.com/skeptomai/pelagos) container runtime.
+Terminal UI for the [pelagos](https://github.com/pelagos-containers/pelagos) container runtime.
 
 **Status: Working.** Builds and runs on macOS (Apple Silicon) and Linux.
 See [QUICKSTART.md](QUICKSTART.md) for build and manual testing steps.
@@ -49,8 +49,8 @@ the client trait and renders what comes back.
 
 | Repo | Role |
 |---|---|
-| [pelagos](https://github.com/skeptomai/pelagos) | Linux container runtime; defines `PelagosClient` trait |
-| [pelagos-mac](https://github.com/skeptomai/pelagos-mac) | macOS VM layer; provides `MacPelagosClient` impl; currently hosts the TUI (being extracted) |
+| [pelagos](https://github.com/pelagos-containers/pelagos) | Linux container runtime; defines `PelagosClient` trait |
+| [pelagos-mac](https://github.com/pelagos-containers/pelagos-mac) | macOS VM layer; provides `MacPelagosClient` impl; currently hosts the TUI (being extracted) |
 
 ---
 
