@@ -30,10 +30,10 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 
 use app::{App, ConfirmAction, ImageInfo, SubscriptionMsg};
-#[cfg(target_os = "macos")]
-use runner::MacOsRunner as PlatformRunner;
 #[cfg(not(target_os = "macos"))]
 use runner::LinuxRunner as PlatformRunner;
+#[cfg(target_os = "macos")]
+use runner::MacOsRunner as PlatformRunner;
 #[allow(unused_imports)]
 use runner::Runner;
 
@@ -160,13 +160,20 @@ fn run_subscription(
 ) -> anyhow::Result<()> {
     use std::io::BufRead;
 
-    let mut child = std::process::Command::new("pelagos")
-        .arg("--profile")
-        .arg(profile)
-        .arg("subscribe")
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .spawn()?;
+    let mut child = {
+        let mut cmd = std::process::Command::new("pelagos");
+        // On macOS, pelagos-mac multiplexes VM profiles via --profile.
+        // On Linux, pelagos runs natively with no profile concept — omit the flag.
+        #[cfg(target_os = "macos")]
+        cmd.arg("--profile").arg(profile);
+        // On Linux, `profile` is unused — suppress the warning without a dummy binding.
+        #[cfg(not(target_os = "macos"))]
+        let _ = profile;
+        cmd.arg("subscribe")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()?
+    };
 
     let stdout = child.stdout.take().expect("piped stdout");
 
