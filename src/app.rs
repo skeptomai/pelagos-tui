@@ -895,3 +895,158 @@ fn clamp_selected(selected: &mut usize, len: usize) {
         *selected = len - 1;
     }
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(json: &str) -> SubscriptionMsg {
+        serde_json::from_str(json).expect("parse failed")
+    }
+
+    #[test]
+    fn test_parse_snapshot_empty() {
+        let msg = parse(r#"{"type":"snapshot","containers":[],"vm_running":true}"#);
+        match msg {
+            SubscriptionMsg::Snapshot {
+                containers,
+                vm_running,
+            } => {
+                assert!(containers.is_empty());
+                assert!(vm_running);
+            }
+            other => panic!("expected Snapshot, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_snapshot_with_container() {
+        let json = r#"{
+            "type": "snapshot",
+            "vm_running": true,
+            "containers": [{
+                "name": "web",
+                "rootfs": "/rootfs/alpine",
+                "status": "running",
+                "pid": 99,
+                "started_at": "2026-01-01T00:00:00Z"
+            }]
+        }"#;
+        let msg = parse(json);
+        match msg {
+            SubscriptionMsg::Snapshot {
+                containers,
+                vm_running,
+            } => {
+                assert!(vm_running);
+                assert_eq!(containers.len(), 1);
+                let c = &containers[0];
+                assert_eq!(c.name, "web");
+                assert_eq!(c.status, "running");
+                assert_eq!(c.pid, 99);
+                assert_eq!(c.rootfs, "/rootfs/alpine");
+                assert_eq!(c.started_at, "2026-01-01T00:00:00Z");
+            }
+            other => panic!("expected Snapshot, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_container_started() {
+        let json = r#"{
+            "type": "container_started",
+            "container": {
+                "name": "worker",
+                "rootfs": "/rootfs/alpine",
+                "status": "running",
+                "pid": 42,
+                "started_at": "2026-01-01T00:00:00Z"
+            }
+        }"#;
+        let msg = parse(json);
+        match msg {
+            SubscriptionMsg::ContainerStarted { container } => {
+                assert_eq!(container.name, "worker");
+            }
+            other => panic!("expected ContainerStarted, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_container_exited() {
+        let json = r#"{"type":"container_exited","name":"foo","exit_code":0}"#;
+        let msg = parse(json);
+        match msg {
+            SubscriptionMsg::ContainerExited { name, exit_code } => {
+                assert_eq!(name, "foo");
+                assert_eq!(exit_code, Some(0));
+            }
+            other => panic!("expected ContainerExited, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_container_exited_no_exit_code() {
+        let json = r#"{"type":"container_exited","name":"bar"}"#;
+        let msg = parse(json);
+        match msg {
+            SubscriptionMsg::ContainerExited { name, exit_code } => {
+                assert_eq!(name, "bar");
+                assert_eq!(exit_code, None);
+            }
+            other => panic!("expected ContainerExited, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_heartbeat() {
+        let json = r#"{"type":"heartbeat","ts":12345}"#;
+        let msg = parse(json);
+        match msg {
+            SubscriptionMsg::Heartbeat { ts } => {
+                assert_eq!(ts, 12345);
+            }
+            other => panic!("expected Heartbeat, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_snapshot_vm_running_true() {
+        let json = r#"{"type":"snapshot","containers":[],"vm_running":true}"#;
+        let msg = parse(json);
+        match msg {
+            SubscriptionMsg::Snapshot { vm_running, .. } => assert!(vm_running),
+            other => panic!("expected Snapshot, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_container_fields_default() {
+        // Only required fields; optional ones should use defaults.
+        let json = r#"{
+            "type": "snapshot",
+            "vm_running": false,
+            "containers": [{
+                "name": "minimal",
+                "rootfs": "/rootfs",
+                "status": "running",
+                "pid": 1,
+                "started_at": "2026-01-01T00:00:00Z"
+            }]
+        }"#;
+        let msg = parse(json);
+        match msg {
+            SubscriptionMsg::Snapshot { containers, .. } => {
+                let c = &containers[0];
+                assert_eq!(c.exit_code, None);
+                assert!(c.ports.is_empty());
+                assert!(c.command.is_empty());
+            }
+            other => panic!("expected Snapshot, got {:?}", other),
+        }
+    }
+}
