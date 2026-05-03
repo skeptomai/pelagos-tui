@@ -769,9 +769,16 @@ fn render_kubernetes(f: &mut Frame, app: &App, area: Rect) {
     let spans = vec![
         Span::styled(
             "  kubernetes  ",
-            Style::default().fg(Color::Gray).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Gray)
+                .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            status_text,
+            Style::default()
+                .fg(status_color)
+                .add_modifier(Modifier::BOLD),
+        ),
     ];
     f.render_widget(Paragraph::new(Line::from(spans)), status_line);
 
