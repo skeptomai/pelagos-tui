@@ -29,7 +29,7 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 
-use app::{App, ConfirmAction, ImageInfo, SubscriptionMsg};
+use app::{App, ConfirmAction, ImageInfo, K8sAction, SubscriptionMsg};
 #[cfg(not(target_os = "macos"))]
 use runner::LinuxRunner as PlatformRunner;
 #[cfg(target_os = "macos")]
@@ -367,6 +367,15 @@ fn run_loop(
                 };
             std::thread::spawn(move || {
                 execute_action_bg(&profile, &action, &targets, status_tx, sub_config_for_rm);
+            });
+        }
+
+        // Kubernetes: drain result and spawn action.
+        app.poll_k8s_result();
+        if let Some(action) = app.pending_k8s_action.take() {
+            let tx = app.k8s_tx.clone();
+            std::thread::spawn(move || {
+                execute_k8s_bg(action, tx);
             });
         }
 
@@ -820,6 +829,37 @@ fn normalise_run_args<'a>(tokens: &[&'a str]) -> Vec<&'a str> {
     }
     result.extend(cmd);
     result
+}
+
+/// Run a kubernetes command against the build profile and report the resulting status.
+fn execute_k8s_bg(action: K8sAction, tx: Option<mpsc::SyncSender<Result<bool, String>>>) {
+    let tx = match tx {
+        Some(t) => t,
+        None => return,
+    };
+
+    let subcommand = match action {
+        K8sAction::Status => "status",
+        K8sAction::Start => "start",
+        K8sAction::Stop => "stop",
+    };
+
+    // Kubernetes always targets the build VM.
+    let result = pelagos_cmd("build")
+        .arg("kubernetes")
+        .arg(subcommand)
+        .output();
+
+    match result {
+        Err(e) => {
+            let _ = tx.try_send(Err(format!("{}", e)));
+        }
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let running = stdout.trim() == "running";
+            let _ = tx.try_send(Ok(running));
+        }
+    }
 }
 
 fn send_status(tx: &Option<mpsc::SyncSender<String>>, msg: String) {

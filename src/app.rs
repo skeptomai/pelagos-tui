@@ -225,6 +225,17 @@ impl ConfirmAction {
 }
 
 // ---------------------------------------------------------------------------
+// Kubernetes action
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum K8sAction {
+    Status,
+    Start,
+    Stop,
+}
+
+// ---------------------------------------------------------------------------
 // Mode
 // ---------------------------------------------------------------------------
 
@@ -246,6 +257,8 @@ pub enum Mode {
     ConfirmQuit,
     /// Scrollable inspect overlay showing full container detail.
     Inspect,
+    /// Kubernetes (rusternetes) control plane management.
+    Kubernetes,
 }
 
 // ---------------------------------------------------------------------------
@@ -316,6 +329,15 @@ pub struct App {
     pub image_inspect_lines: Vec<String>,
     pub image_inspect_loading: bool,
     pub image_inspect_scroll: usize,
+
+    // Kubernetes screen state.
+    /// Last known status: None = unknown, Some(true) = running, Some(false) = stopped.
+    pub k8s_status: Option<bool>,
+    pub k8s_status_loading: bool,
+    /// Set to trigger a background kubernetes action; drained by main.rs.
+    pub pending_k8s_action: Option<K8sAction>,
+    pub k8s_tx: Option<mpsc::SyncSender<Result<bool, String>>>,
+    pub k8s_rx: Option<mpsc::Receiver<Result<bool, String>>>,
 }
 
 impl App {
@@ -325,6 +347,7 @@ impl App {
         let (inspect_tx, inspect_rx) = mpsc::sync_channel(1);
         let (image_ls_tx, image_ls_rx) = mpsc::sync_channel(1);
         let (image_inspect_tx, image_inspect_rx) = mpsc::sync_channel(1);
+        let (k8s_tx, k8s_rx) = mpsc::sync_channel(1);
         let tui_config = TuiConfig::load(&profile);
         Self {
             mode: Mode::Normal,
@@ -371,6 +394,11 @@ impl App {
             image_inspect_lines: Vec::new(),
             image_inspect_loading: false,
             image_inspect_scroll: 0,
+            k8s_status: None,
+            k8s_status_loading: false,
+            pending_k8s_action: None,
+            k8s_tx: Some(k8s_tx),
+            k8s_rx: Some(k8s_rx),
         }
     }
 
@@ -466,6 +494,7 @@ impl App {
             Mode::Confirm => self.on_key_confirm(key),
             Mode::ConfirmQuit => self.on_key_confirm_quit(key),
             Mode::Inspect => self.on_key_inspect(key),
+            Mode::Kubernetes => self.on_key_kubernetes(key),
         }
     }
 
@@ -553,6 +582,14 @@ impl App {
                 self.pending_image_ls = true;
                 self.images_loading = true;
                 self.mode = Mode::Images;
+            }
+
+            // Kubernetes screen.
+            KeyCode::Char('K') => {
+                self.k8s_status = None;
+                self.pending_k8s_action = Some(K8sAction::Status);
+                self.k8s_status_loading = true;
+                self.mode = Mode::Kubernetes;
             }
 
             // Prune: target all exited containers regardless of selection.
@@ -686,6 +723,27 @@ impl App {
             }
             KeyCode::Char('k') | KeyCode::Up => {
                 self.inspect_scroll = self.inspect_scroll.saturating_sub(1);
+            }
+            _ => {}
+        }
+    }
+
+    fn on_key_kubernetes(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('K') => {
+                self.mode = Mode::Normal;
+            }
+            KeyCode::Char('s') => {
+                self.pending_k8s_action = Some(K8sAction::Start);
+                self.k8s_status_loading = true;
+            }
+            KeyCode::Char('x') => {
+                self.pending_k8s_action = Some(K8sAction::Stop);
+                self.k8s_status_loading = true;
+            }
+            KeyCode::Char('r') => {
+                self.pending_k8s_action = Some(K8sAction::Status);
+                self.k8s_status_loading = true;
             }
             _ => {}
         }
@@ -877,6 +935,20 @@ impl App {
                     }
                     Err(e) => {
                         self.image_inspect_lines = vec![format!("Error: {}", e)];
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn poll_k8s_result(&mut self) {
+        if let Some(rx) = &self.k8s_rx {
+            while let Ok(result) = rx.try_recv() {
+                self.k8s_status_loading = false;
+                match result {
+                    Ok(running) => self.k8s_status = Some(running),
+                    Err(e) => {
+                        self.status_message = Some(format!("kubernetes: {}", e));
                     }
                 }
             }

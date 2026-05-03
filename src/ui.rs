@@ -31,13 +31,15 @@ pub fn render(f: &mut Frame, app: &App) {
         ])
         .split(area);
 
-    // Main content area: containers or images depending on mode.
+    // Main content area: containers, images, or kubernetes depending on mode.
     if app.mode == Mode::Images
         || app.mode == Mode::ImagePull
         || app.mode == Mode::ImageInspect
         || (app.mode == Mode::Confirm && app.confirm_action == Some(ConfirmAction::ImageRm))
     {
         render_images(f, app, chunks[0]);
+    } else if app.mode == Mode::Kubernetes {
+        render_kubernetes(f, app, chunks[0]);
     } else {
         render_table(f, app, chunks[0]);
     }
@@ -178,7 +180,8 @@ fn render_hint_bar(f: &mut Frame, app: &App, area: Rect) {
         Mode::Inspect => "  [j/k]scroll  [Esc/q]close",
         Mode::ImageInspect => "  [j/k]scroll  [Esc/q]close",
         Mode::Images => "  [I/Esc]containers  [j/k]nav  [R]run  [p]pull  [d]delete  [Enter]inspect  [r]refresh",
-        _ => "  [q]quit  [a]all  [j/k]nav  [Space]sel  [s]stop  [S]restart  [d]rm  [P]prune  [r]run-i  [R]run-d  [i/Enter]inspect  [p]profile  [I]images",
+        Mode::Kubernetes => "  [K/Esc]back  [s]start  [x]stop  [r]refresh",
+        _ => "  [q]quit  [a]all  [j/k]nav  [Space]sel  [s]stop  [S]restart  [d]rm  [P]prune  [r]run-i  [R]run-d  [i/Enter]inspect  [p]profile  [I]images  [K]kubernetes",
     };
     let hints = Paragraph::new(text).style(Style::default().fg(Color::DarkGray));
     f.render_widget(hints, area);
@@ -715,6 +718,67 @@ fn render_images(f: &mut Frame, app: &App, area: Rect) {
             .style(Style::default().fg(Color::DarkGray));
         f.render_widget(p, inner);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Kubernetes screen
+// ---------------------------------------------------------------------------
+
+fn render_kubernetes(f: &mut Frame, app: &App, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" kubernetes — build ");
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    let (status_text, status_color): (&str, Color) = if app.k8s_status_loading {
+        ("checking...", Color::DarkGray)
+    } else {
+        match app.k8s_status {
+            Some(true) => ("running", Color::Green),
+            Some(false) => ("stopped", Color::Red),
+            None => ("unknown", Color::DarkGray),
+        }
+    };
+
+    let action_hint: &str = if app.pending_k8s_action.is_some() || app.k8s_status_loading {
+        " (working...)"
+    } else {
+        match app.k8s_status {
+            Some(true) => "  press [x] to stop",
+            Some(false) => "  press [s] to start",
+            None => "",
+        }
+    };
+
+    let y_mid = inner.height / 2;
+
+    let status_line = Rect {
+        x: inner.x + 2,
+        y: inner.y + y_mid,
+        width: inner.width.saturating_sub(4),
+        height: 1,
+    };
+    let hint_line = Rect {
+        x: inner.x + 2,
+        y: inner.y + y_mid + 1,
+        width: inner.width.saturating_sub(4),
+        height: 1,
+    };
+
+    let spans = vec![
+        Span::styled(
+            "  kubernetes  ",
+            Style::default().fg(Color::Gray).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
+    ];
+    f.render_widget(Paragraph::new(Line::from(spans)), status_line);
+
+    f.render_widget(
+        Paragraph::new(action_hint).style(Style::default().fg(Color::DarkGray)),
+        hint_line,
+    );
 }
 
 // ---------------------------------------------------------------------------
